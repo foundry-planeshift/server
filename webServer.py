@@ -210,8 +210,10 @@ async def set_camera_exposure(request):
         status=200
     )
 
+async def health_check(_):
+    return web.Response(status=200)
 
-def start_server():
+def start_server(hostname, port):
     app = web.Application()
     cors = aiohttp_cors.setup(app, defaults={
         "*": aiohttp_cors.ResourceOptions(
@@ -228,18 +230,21 @@ def start_server():
     cors.add(app.router.add_post("/calibrationimage", calibration_image))
     cors.add(app.router.add_post("/calibratecamera", calibrate_camera))
     cors.add(app.router.add_post("/setcameraexposure", set_camera_exposure))
+    cors.add(app.router.add_get("/healthcheck", health_check))
 
-    hostname = "localhost"
-    web.run_app(app, host=hostname, port=8337)
+    web.run_app(app, host=hostname, port=port)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--device', type=str, help='The video device to capture images from', required=True)
+    parser.add_argument('--hostname', nargs="?", type=str, default="localhost", help='The hostname for the server')
+    parser.add_argument('--port', nargs="?", type=int, default=8337, help='The port for the server')
+    parser.add_argument('--debug', nargs="?", type=bool, default=False, help='To enable debug mode')
     args = parser.parse_args()
 
 
-    plane_shift = PlaneShift(args.device, debug=True)
+    plane_shift = PlaneShift(args.device, debug=args.debug)
     plane_shift.load_camera_calibration("calibration/calibration.json")
     plane_shift.start()
 
-    start_server()
+    start_server(args.hostname, args.port)

@@ -49,15 +49,8 @@ class PlaneShift:
 
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_100)
         self.aruco_detector_params = aruco.DetectorParameters_create()
-        # self.aruco_detector_params.adaptiveThreshWinSizeMin = 5
-        # self.aruco_detector_params.adaptiveThreshWinSizeStep = 5
-        # self.aruco_detector_params.adaptiveThreshWinSizeMax = 50
-        # self.aruco_detector_params.polygonalApproxAccuracyRate = 0.1
-        # self.aruco_detector_params.perspectiveRemoveIgnoredMarginPerCell = 0.4
+        self.aruco_detector_params.cornerRefinementMethod = 0
 
-        # self.aruco_detector_params.useAruco3Detection = True
-        # self.aruco_detector_params.minSideLengthCanonicalImg = 8 # tau_c
-        # self.aruco_detector_params.minMarkerLengthRatioOriginalImg = 0.00010 # tau_i
         self.aruco_markers = {}
 
         self._calibration_markers = None

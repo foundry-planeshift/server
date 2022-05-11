@@ -33,13 +33,15 @@ class ArucoMarker:
         self._size = (np.linalg.norm(self.tl() - self.tr()) + self.border_width()*2,
                       np.linalg.norm(self.tl() - self.bl()) + self.border_height()*2)
 
-    def to_json(self):
-        data = {
-            "id": int(self.id),
-            # "coordinates": self.tvec().tolist()
-        }
+    def serializable(self):
+        # return {
+        #     str(self.id): self.centroid().tolist()
+        # }
 
-        return json.dumps(data)
+        return {
+            "id": int(self.id),
+            "coordinates": self.centroid().tolist()
+        }
 
     def is_calibration_marker(self):
         return MarkerType(self.id) in CALIBRATION_MARKER_TYPES

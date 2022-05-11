@@ -192,7 +192,7 @@ async def calibrate_camera(_):
     )
 
 async def tokens_location(_):
-    tokens_location = plane_shift._mp_player_token_locations
+    tokens_location = plane_shift._mp_player_tokens
     location_json = json.dumps(list(tokens_location))
     return web.Response(
         status=200,
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, help='The video device to capture images from', required=True)
     parser.add_argument('--hostname', nargs="?", type=str, default="localhost", help='The hostname for the server')
     parser.add_argument('--port', nargs="?", type=int, default=8337, help='The port for the server')
-    parser.add_argument('--debug', nargs="?", type=bool, default=False, help='To enable debug mode')
+    parser.add_argument('--debug', nargs="?", type=bool, const=True, help='To enable debug mode')
     args = parser.parse_args()
 
 

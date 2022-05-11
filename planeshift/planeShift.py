@@ -49,7 +49,7 @@ class PlaneShift:
 
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_100)
         self.aruco_detector_params = aruco.DetectorParameters_create()
-        self.aruco_detector_params.cornerRefinementMethod = 0
+        # self.aruco_detector_params.cornerRefinementMethod = 0
 
         self.aruco_markers = {}
 
@@ -62,8 +62,8 @@ class PlaneShift:
         # self._mp_mode = Value('i', Mode.DETECTION.value)
 
         self._all_tokens = {}
-        self._mp_all_tokens = self.process_manager.dict()
-        self._mp_player_token_locations = self.process_manager.list()
+        self._mp_all_tokens = self.process_manager.list()
+        self._mp_player_tokens = self.process_manager.list()
 
         self._stream_image_size = (480, 640, 3)
         self._mp_original_image = Array('B', self.create_array(self._stream_image_size, np.uint8))
@@ -122,24 +122,22 @@ class PlaneShift:
         image.shape = image.size
         return Array('B', image)
 
-    def find_markers(self, image: np.array) -> dict:
+    def find_markers(self, image: np.array) -> list:
 
         detected = cv2.aruco.detectMarkers(image, self.aruco_dict, parameters=self.aruco_detector_params)
 
         if len(detected[0]) == 0:
-            return {}
+            return []
 
         detected_markers = [cv2.UMat.get(d) for d in detected[0]]
         ids = cv2.UMat.get(detected[1])
-        # detected_markers = [d for d in detected[0]]
-        # ids = detected[1]
 
-        aruco_markers = {}
+        aruco_markers = []
         for i in range(0, len(detected[0])):
             (polygon, id) = [detected_markers[i].astype(int), ids[i]]
 
             marker = ArucoMarker(id[0], polygon[0])
-            aruco_markers[id[0]] = marker
+            aruco_markers.append(marker)
 
         return aruco_markers
 
@@ -158,7 +156,7 @@ class PlaneShift:
 
 
     def select_roi(self, debug_image=None) -> bool:
-        markers = self.find_calibration_markers(self.all_tokens().values())
+        markers = self.find_calibration_markers(self.all_tokens())
         if markers is None or len(markers) < 4:
             return False
 
@@ -199,8 +197,7 @@ class PlaneShift:
         return sorted([t for t in tokens if MarkerType.has_value(t.id)], key=lambda x: x.id)
 
     def find_player_tokens(self, tokens):
-        player_keys =  set(tokens.keys()) - set(CALIBRATION_MARKER_TYPES)
-        return [tokens.get(k) for k in player_keys]
+        return [t for t in tokens if not MarkerType.has_value(t.id)]
 
 
     def draw_tokens(self, image, tokens, color=(0, 255, 255)):
@@ -270,7 +267,10 @@ class PlaneShift:
             annotated_image = copy(umat_image.get())
 
             putBorderedText(annotated_image, f"FPS: {fps}", (0, 25), self.font)
+            self.draw_roi_area(annotated_image, self.roi_markers, self._roi_selected.value)
 
+            all_tokens = self.find_markers(umat_image)
+            self.draw_tokens(annotated_image, all_tokens)
             self._set_original_image(annotated_image)
 
             if self._roi_selected.value:
@@ -279,25 +279,20 @@ class PlaneShift:
 
                 warped_annotated_image = copy(warped_image.get())
 
-                tokens = self.find_markers(warped_image)
-                with self._lock:
-                    self._mp_all_tokens.update(tokens)
+                player_tokens = self.find_player_tokens(all_tokens)
+                warped_markers = [t.transform(self.warp_matrix()) for t in player_tokens]
 
-                markers = self.find_player_tokens(tokens)
-                self.draw_tokens(warped_annotated_image, markers)
+                self.draw_tokens(warped_annotated_image, warped_markers)
 
-                warped_markers = [t.transform(np.linalg.inv(self.warp_matrix())) for t in markers]
-                self.draw_tokens(annotated_image, warped_markers)
-
-                self.draw_roi_area(annotated_image, markers, self._roi_selected.value)
+                self.draw_roi_area(annotated_image, warped_markers, self._roi_selected.value)
 
                 if self.debug:
                     resized = cv2.resize(annotated_image, (1200, 900))
                     cv2.imshow("Original image", resized)
 
-                if len(markers) > 0:
-                    self._mp_player_token_locations[:] = []
-                    for marker in markers:
+                if len(warped_markers) > 0:
+                    self._mp_player_tokens[:] = []
+                    for marker in warped_markers:
 
                         centroid = marker.centroid()
 
@@ -309,7 +304,8 @@ class PlaneShift:
                             "id": int(marker.id),
                             "coordinates": relative_centroid.tolist()
                         }
-                        self._mp_player_token_locations.append(json.dumps(data))
+                        self._mp_player_tokens.append(json.dumps(data))
+                        # print(data)
 
                         putBorderedText(warped_annotated_image, string, marker.tl(), self.font)
 
@@ -355,24 +351,14 @@ class PlaneShift:
             if img is None:
                 continue
 
-            # img = cv2.UMat(img)
-
             frame_nr += 1
 
-            # if frame_nr % avg_num == 0:
-
-                # avg_img = np.divide(avg_img, avg_num)
-                # img = avg_img.astype('uint8')
-
-
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            # if frame_nr % 30 == 0:
             # Find aruco markers in the query image
             corners, ids, rejected = aruco.detectMarkers(
                 image=gray,
                 dictionary=self.aruco_dict)
 
-            response = 0
             if len(corners) > 0 or ids is not None:
 
                 # Outline the aruco markers found in our query image
@@ -461,14 +447,16 @@ class PlaneShift:
             tokens = self.find_markers(umat_image)
 
             with self._lock:
-                self._mp_all_tokens.update(tokens)
+                self._mp_all_tokens[:] = tokens
 
-            calibration_tokens = [t for t in tokens.values() if MarkerType.has_value(t.id)]
+            calibration_tokens = [t for t in tokens if MarkerType.has_value(t.id)]
 
             putBorderedText(annotated_image, f"FPS: {fps}", (0, 25), self.font)
 
             self.draw_tokens(annotated_image, calibration_tokens)
-            self.draw_roi_area(annotated_image, tokens.values(), self._roi_selected.value)
+
+            self.roi_markers = self.find_calibration_markers(tokens)
+            self.draw_roi_area(annotated_image, self.roi_markers, self._roi_selected.value)
 
             if self.debug:
                 resized = cv2.resize(annotated_image, (1200, 900))

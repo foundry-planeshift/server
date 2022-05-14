@@ -19,12 +19,10 @@ from enum import Enum
 class Mode(Enum):
     CALIBRATION = 0
     DETECTION = 1
-    SELECT_BATTLEAREA = 2
 
 MODE_NAMES = {
     Mode.CALIBRATION: "calibration",
-    Mode.DETECTION: "detection",
-    Mode.SELECT_BATTLEAREA: "select battlearea"
+    Mode.DETECTION: "detection"
 }
 
 class PlaneShift:
@@ -49,17 +47,15 @@ class PlaneShift:
 
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_100)
         self.aruco_detector_params = aruco.DetectorParameters_create()
-        # self.aruco_detector_params.cornerRefinementMethod = 0
 
         self.aruco_markers = {}
 
-        self._calibration_markers = None
+        self._mp_calibration_markers = self.process_manager.list()
         self._roi_selected = Value(c_bool, False)
 
         self.capture = None
 
-        self._mp_mode = Value('i', Mode.SELECT_BATTLEAREA.value)
-        # self._mp_mode = Value('i', Mode.DETECTION.value)
+        self._mp_mode = Value('i', Mode.DETECTION.value)
 
         self._all_tokens = {}
         self._mp_all_tokens = self.process_manager.list()
@@ -155,12 +151,12 @@ class PlaneShift:
         return max_width, max_height
 
 
-    def select_roi(self, debug_image=None) -> bool:
+    def select_battlearea(self, debug_image=None) -> bool:
         markers = self.find_calibration_markers(self.all_tokens())
         if markers is None or len(markers) < 4:
             return False
 
-        self._calibration_markers = markers
+        self._mp_calibration_markers[:] = markers
         topleft_qrcode, topright_qrcode, bottomright_qrcode, bottomleft_qrcode = markers
 
         pts = np.float32([topleft_qrcode.inner_tl(),
@@ -186,12 +182,10 @@ class PlaneShift:
         self._warp_size[:] = [max_width, max_height]
         self._roi_selected.value = True
 
-        self.set_mode(Mode.DETECTION)
-
         return True
 
     def calibration_marker(self, token: MarkerType):
-        return self._calibration_markers[token.value]
+        return self._mp_calibration_markers[token.value]
 
     def find_calibration_markers(self, tokens):
         return sorted([t for t in tokens if MarkerType.has_value(t.id)], key=lambda x: x.id)
@@ -209,7 +203,6 @@ class PlaneShift:
         if markers is None or len(markers) < 4:
             return False
 
-        self._calibration_markers = markers
         topleft_qrcode, topright_qrcode, bottomright_qrcode, bottomleft_qrcode = markers
 
         pts = np.float32([topleft_qrcode.inner_tl(),
@@ -247,8 +240,6 @@ class PlaneShift:
                 self._calibration(capture)
             elif mode == Mode.DETECTION:
                 self._detection(capture)
-            elif mode == Mode.SELECT_BATTLEAREA:
-                self._select_battlearea(capture)
 
     def _detection(self, capture):
         print("PlaneShift: Entering mode 'detection'")
@@ -267,11 +258,21 @@ class PlaneShift:
             annotated_image = copy(umat_image.get())
 
             putBorderedText(annotated_image, f"FPS: {fps}", (0, 25), self.font)
-            self.draw_roi_area(annotated_image, self.roi_markers, self._roi_selected.value)
 
             all_tokens = self.find_markers(umat_image)
+            self._mp_all_tokens[:] = all_tokens
             self.draw_tokens(annotated_image, all_tokens)
+
+            calibration_markers = self.find_calibration_markers(all_tokens)
+            self.draw_roi_area(annotated_image, calibration_markers, False)
+            if self._mp_calibration_markers:
+                self.draw_roi_area(annotated_image, self._mp_calibration_markers, self._roi_selected.value)
+
             self._set_original_image(annotated_image)
+
+            if self.debug:
+                resized = cv2.resize(annotated_image, (1200, 900))
+                cv2.imshow("Original image", resized)
 
             if self._roi_selected.value:
                 warped_image = cv2.warpPerspective(umat_image, self.warp_matrix(), self._warp_size)
@@ -286,9 +287,7 @@ class PlaneShift:
 
                 self.draw_roi_area(annotated_image, warped_markers, self._roi_selected.value)
 
-                if self.debug:
-                    resized = cv2.resize(annotated_image, (1200, 900))
-                    cv2.imshow("Original image", resized)
+
 
                 if len(warped_markers) > 0:
                     self._mp_player_tokens[:] = []
@@ -428,51 +427,6 @@ class PlaneShift:
 
         self.set_mode(Mode.DETECTION)
 
-    def _select_battlearea(self, capture):
-        print("PlaneShift: Entering mode 'select battlearea'")
-
-        fps = 0
-        while Mode(self._mp_mode.value) == Mode.SELECT_BATTLEAREA:
-
-            start = time.time()
-
-            image = capture.read()[1]
-            if image is None:
-                continue
-
-            umat_image = cv2.UMat(image)
-
-            annotated_image = copy(umat_image.get())
-
-            tokens = self.find_markers(umat_image)
-
-            with self._lock:
-                self._mp_all_tokens[:] = tokens
-
-            calibration_tokens = [t for t in tokens if MarkerType.has_value(t.id)]
-
-            putBorderedText(annotated_image, f"FPS: {fps}", (0, 25), self.font)
-
-            self.draw_tokens(annotated_image, calibration_tokens)
-
-            self.roi_markers = self.find_calibration_markers(tokens)
-            self.draw_roi_area(annotated_image, self.roi_markers, self._roi_selected.value)
-
-            if self.debug:
-                resized = cv2.resize(annotated_image, (1200, 900))
-                cv2.imshow("Original image", resized)
-
-            self._set_original_image(annotated_image)
-
-            if self.debug:
-                if cv2.waitKey(1) > 0:
-                    print("Selecting battle area")
-                    self.select_roi()
-
-            elapsed = time.time() - start
-            fps = int(1/elapsed)
-
-        print("PlaneShift: Exiting mode 'select battlearea'")
 
 if __name__ == '__main__':
     planeshift = PlaneShift()

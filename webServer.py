@@ -132,8 +132,8 @@ async def roi_image(request):
         ),
     )
 
-async def select_roi(_):
-    ok = plane_shift.select_roi()
+async def select_battlearea(_):
+    ok = plane_shift.select_battlearea()
 
     return web.Response(
         status=200 if ok else 500
@@ -225,7 +225,7 @@ def start_server(hostname, port):
 
     cors.add(app.router.add_post("/originalimage", original_image))
     cors.add(app.router.add_post("/roiimage", roi_image))
-    cors.add(app.router.add_post("/selectroi", select_roi))
+    cors.add(app.router.add_post("/selectroi", select_battlearea))
     cors.add(app.router.add_get("/tokenslocation", tokens_location))
     cors.add(app.router.add_post("/calibrationimage", calibration_image))
     cors.add(app.router.add_post("/calibratecamera", calibrate_camera))

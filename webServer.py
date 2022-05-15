@@ -1,7 +1,7 @@
 import json
 import cv2
 import asyncio
-import socket
+import re
 import argparse
 
 from av import VideoFrame
@@ -234,17 +234,53 @@ def start_server(hostname, port):
 
     web.run_app(app, host=hostname, port=port)
 
+def parse_resolution(string):
+    match = re.search("^(\d+)x(\d+)$", string)
+    return match.groups()
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--device', type=str, help='The video device to capture images from', required=True)
-    parser.add_argument('--hostname', nargs="?", type=str, default="localhost", help='The hostname for the server')
-    parser.add_argument('--port', nargs="?", type=int, default=8337, help='The port for the server')
-    parser.add_argument('--debug', nargs="?", type=bool, const=True, help='To enable debug mode')
+    parser.add_argument('--device', type=str, help='The video device to capture images from')
+    parser.add_argument('--resolution', nargs="?", type=str, help='The port for the server')
+    parser.add_argument('--hostname', nargs="?", type=str, help='The hostname for the server')
+    parser.add_argument('--port', nargs="?", type=int, help='The port for the server')
+    parser.add_argument('--debug', nargs="?", type=bool, help='To enable debug mode')
     args = parser.parse_args()
 
+    with open('config.json', 'r') as f:
+        config = json.load(f)
 
-    plane_shift = PlaneShift(args.device, debug=args.debug)
+    device = args.device if (args.device) else config.get('device').get('location')
+    if device is None:
+        print("No device defined in configuration. Exitting.")
+        exit()
+
+    resolution = parse_resolution(args.resolution) if (args.resolution) else parse_resolution(config.get('device').get('resolution'))
+    if len(resolution) != 2:
+        print("No resolution defined in configuration. Exitting.")
+        exit()
+
+    hostname = args.hostname if (args.hostname) else config.get('server').get('hostname')
+    if hostname is None:
+        hostname = "localhost"
+
+    port = args.port if (args.port) else config.get('server').get('port')
+    if port is None:
+        port = 8337
+
+    debug = args.debug if (args.debug) else config.get('debug')
+    if debug is None:
+        debug = False
+
+    print(f"Starting PlaneShift server with the following settings:\n"
+          f"Device: {device}\n"
+          f"Resolution: {resolution[0]}x{resolution[1]}\n"
+          f"Hostname: {hostname}\n"
+          f"Port: {port}\n"
+          f"Debugging: {debug}")
+
+    plane_shift = PlaneShift(device, resolution, debug=debug)
     plane_shift.load_camera_calibration("calibration/calibration.json")
     plane_shift.start()
 
-    start_server(args.hostname, args.port)
+    start_server(hostname, port)

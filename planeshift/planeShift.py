@@ -27,10 +27,11 @@ MODE_NAMES = {
 
 class PlaneShift:
 
-    def __init__(self, device, debug=False):
+    def __init__(self, device: str, resolution: tuple, debug: bool = False):
 
         self.device = device
         self.debug = debug
+        self.resolution = resolution
 
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.font_scale = 1
@@ -229,10 +230,8 @@ class PlaneShift:
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         capture.set(cv2.CAP_PROP_FOURCC, fourcc)
 
-        # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 2592)
-        # capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1944)
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, 2048)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1536)
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
 
         while True:
             mode = Mode(self._mp_mode.value)
@@ -331,7 +330,6 @@ class PlaneShift:
         print("PlaneShift: Entering mode 'calibration'")
         corners_all = []  # Corners discovered in all images processed
         ids_all = []  # Aruco ids corresponding to corners discovered
-        image_size = (1920, 1080)
 
         CHARUCOBOARD_ROWCOUNT = 16
         CHARUCOBOARD_COLCOUNT = 30
@@ -403,7 +401,7 @@ class PlaneShift:
             charucoCorners=corners_all,
             charucoIds=ids_all,
             board=CHARUCO_BOARD,
-            imageSize=image_size,
+            imageSize=self.resolution,
             cameraMatrix=None,
             distCoeffs=None
         )

@@ -1,0 +1,11 @@
+{
+  "device": {
+    "location": "/dev/video1",
+    "resolution": "2048x1536"
+  },
+  "server": {
+    "hostname": "localhost",
+    "port": 8337
+  },
+  "debug": true
+}

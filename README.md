@@ -25,25 +25,46 @@ Running the server can be done by executing the `webServer.py` file:
 python webServer.py
 ```
 
-but webserver requires some parameters to be able to run. There are two ways to provide this information:
+but webserver requires some parameters to be able to run:
+```
+Device location - The location of the camera file, e.g. /dev/video
+Device resolution - The resolution the camera should run at, e.g. 2048x1536
+
+Server hostname - The hostname where to reach the server, e.g. localhost
+Server port - The port where to reach the server, e.g. 8337
+
+Debug - Whether to run the server in debug mode
+```
+There are two ways to provide this information:
 1. Using a configuration file (see [config.json](config.json) for an example)
 ```json
 {
   "device": {  
-    "location": "/dev/video1", // Location of the video device (webcam)
-    "resolution": "2048x1536" // Resolution to run the webcam on
+    "location": "/dev/video1",
+    "resolution": "2048x1536"
   },
   "server": {
-    "hostname": "localhost", // Location of the webserver, used to connect the module with
-    "port": 8337 // Port of the webserver, used to connect the module with
+    "hostname": "localhost",
+    "port": 8337
   },
-  "debug": true // Enable debug mode
+  "debug": true
 }
 ```
 2. Providing the parameters using the CLI
 ```commandline
 python webServer.py [--device /dev/video1] [--resolution 2048x1536] [--hostname localhost] [--port 8337] [--debug] [--config config.json]
 ```
+
+The parameters can be given in a mix of config file and CLI, but the CLI parameters will always supersede the config file.
+
+The server will default to certain values if those are not provided:
+
+| Parameter | Default     |
+|-----------|-------------|
+| Hostname  | localhost   |
+| Port      | 8337        |
+| Config    | config.json |
+| Debug     | false       |
 
 ## Module
 The FoundryVTT module itself.

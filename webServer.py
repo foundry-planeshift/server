@@ -1,4 +1,5 @@
 import json
+import os
 import cv2
 import asyncio
 import re
@@ -241,13 +242,26 @@ def parse_resolution(string):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--device', type=str, help='The video device to capture images from')
-    parser.add_argument('--resolution', nargs="?", type=str, help='The port for the server')
+    parser.add_argument('--resolution', nargs="?", type=str, help='The resolution for the device')
+
     parser.add_argument('--hostname', nargs="?", type=str, help='The hostname for the server')
     parser.add_argument('--port', nargs="?", type=int, help='The port for the server')
+
+    parser.add_argument('--config', nargs="?", type=str, help='The json file with the configurations')
     parser.add_argument('--debug', nargs="?", type=bool, help='To enable debug mode')
     args = parser.parse_args()
 
-    with open('config.json', 'r') as f:
+    config_location = args.config
+    if not os.path.isfile(config_location):
+        print(f"Specified config file '{args.config}' doesn't exist. Trying default location...")
+        if not os.path.isfile("config.json"):
+            print(f"Default config file '{args.config}' doesn't exist. Exitting.")
+            exit()
+        else:
+            print(f"Default config file 'config.json' found.")
+            config_location = "config.json"
+
+    with open(config_location, 'r') as f:
         config = json.load(f)
 
     device = args.device if (args.device) else config.get('device').get('location')

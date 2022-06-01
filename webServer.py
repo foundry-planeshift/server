@@ -237,7 +237,7 @@ def start_server(hostname, port):
 
 def parse_resolution(string):
     match = re.search("^(\d+)x(\d+)$", string)
-    return match.groups()
+    return tuple(map(int, match.groups()))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -247,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument('--hostname', nargs="?", type=str, help='The hostname for the server')
     parser.add_argument('--port', nargs="?", type=int, help='The port for the server')
 
-    parser.add_argument('--config', nargs="?", type=str, help='The json file with the configurations')
+    parser.add_argument('--config', nargs="?", type=str, default="config.json", help='The json file with the configurations')
     parser.add_argument('--debug', nargs="?", type=bool, help='To enable debug mode')
     args = parser.parse_args()
 

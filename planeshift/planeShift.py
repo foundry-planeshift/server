@@ -3,15 +3,13 @@ import time
 
 import numpy as np
 import cv2
-# from cv2 import cv2
 from cv2 import aruco as aruco
-from cv2 import cuda as cuda
 from copy import copy
 
 from ctypes import c_bool
-from multiprocessing import Process, Array, Manager, Lock, Value, Event
+from multiprocessing import Process, Array, Manager, Lock, Value
 
-from planeshift.arucoMarker import ArucoMarker, MarkerType, CALIBRATION_MARKER_TYPES
+from planeshift.arucoMarker import ArucoMarker, MarkerType
 from planeshift.utils import putBorderedText
 
 from enum import Enum
@@ -46,7 +44,7 @@ class PlaneShift:
         self._lock = Lock()
         self._warp_size = self.process_manager.list()
 
-        self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_100)
+        self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_1000)
         self.aruco_detector_params = aruco.DetectorParameters_create()
 
         self.aruco_markers = {}
@@ -387,7 +385,7 @@ class PlaneShift:
 
             image_text = f"Markers detected: {len(corners)} | Camera image {images_captured}/{nr_of_calibration_images_wanted}"
             putBorderedText(img, image_text, (0, 30), self.font)
-            # putBorderedText(img, f"FPS: {capture.fps}", (0, 60), self.font)
+            putBorderedText(img, f"FPS: {capture.fps}", (0, 60), self.font)
 
             self._set_original_image(img)
             if self.debug:
@@ -424,8 +422,3 @@ class PlaneShift:
         print("Exported calibration.json")
 
         self.set_mode(Mode.DETECTION)
-
-
-if __name__ == '__main__':
-    planeshift = PlaneShift()
-    planeshift.run()

@@ -10,7 +10,7 @@ from planeshift.planeShift import PlaneShift
 
 def start_planeshift():
     plane_shift = PlaneShift(debug=True, device="/dev/video2")
-    plane_shift.load_camera_calibration("calibration/calibration.json")
+    # plane_shift.load_camera_calibration("calibration/calibration.json")
     plane_shift.run()
 
 if __name__ == "__main__":

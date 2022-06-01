@@ -6,6 +6,10 @@ to be tracked within Foundry when using an horizontally mounted TV. This allows 
 
 The system uses printed ArUco markers and a webcam for the tracking.
 The software is split into two components:
+
+## Supported systems
+This software was developed mainly for Linux. It's possible this might work as well on Windows/MacOS, but I haven't tested it so your mileage may vary.
+
 ## Server
 The server is where the computer vision processing is done.
 

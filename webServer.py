@@ -294,7 +294,7 @@ if __name__ == "__main__":
           f"Debugging: {debug}")
 
     plane_shift = PlaneShift(device, resolution, debug=debug)
-    plane_shift.load_camera_calibration("calibration/calibration.json")
+    # plane_shift.load_camera_calibration("calibration/calibration.json")
     plane_shift.start()
 
     start_server(hostname, port)
